@@ -29,7 +29,7 @@ class NovaNetworkConfigurationValidator(BasicValidator):
     @classmethod
     def validate_networks_update(cls, data):
         d = cls.validate_json(data)
-        networks = d['networks']
+        networks = d.get('networks')
 
         if not d:
             raise errors.InvalidData(

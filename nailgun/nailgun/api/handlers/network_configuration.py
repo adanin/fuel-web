@@ -38,7 +38,6 @@ from nailgun.api.validators.network \
 
 from nailgun.db import db
 from nailgun.db.sqlalchemy.models import Cluster
-from nailgun.db.sqlalchemy.models import NetworkGroup
 from nailgun.db.sqlalchemy.models import Task
 
 from nailgun.errors import errors
@@ -82,14 +81,13 @@ class ProviderHandler(JSONHandler):
             json_task = build_json_response(TaskHandler.render(task))
             raise web.accepted(data=json_task)
 
-        if data.get("networks"):
-            data["networks"] = [
-                n for n in data["networks"] if n.get("name") != "fuelweb_admin"
-            ]
+        data["networks"] = [
+            n for n in data["networks"] if n.get("name") != "fuelweb_admin"
+        ]
 
         vlan_ids = [{
             'name': n['name'],
-            'vlans': NetworkGroup.generate_vlan_ids_list(n)
+            'vlans': self.net_manager.generate_vlan_ids_list(n)
         } for n in data['networks']]
 
         task_manager = VerifyNetworksTaskManager(cluster_id=cluster.id)
@@ -100,12 +98,9 @@ class ProviderHandler(JSONHandler):
         return TaskHandler.render(task)
 
 
-class NovaNetworkConfigurationVerifyHandler(ProviderHandler):
-    """Network configuration verify handler
+class NetworkConfigurationVerifyHandler(ProviderHandler):
+    """Basic Network configuration verify handler
     """
-
-    validator = NovaNetworkConfigurationValidator
-    provider = "nova_network"
 
     @content_json
     def PUT(self, cluster_id):
@@ -119,6 +114,26 @@ class NovaNetworkConfigurationVerifyHandler(ProviderHandler):
         cluster = self.get_object_or_404(Cluster, cluster_id)
         self.check_net_provider(cluster)
         return self.launch_verify(cluster)
+
+
+class NovaNetworkConfigurationVerifyHandler(
+        NetworkConfigurationVerifyHandler):
+    """Nova Network configuration verify handler
+    """
+
+    validator = NovaNetworkConfigurationValidator
+    net_manager = NovaNetworkManager
+    provider = "nova_network"
+
+
+class NeutronNetworkConfigurationVerifyHandler(
+        NetworkConfigurationVerifyHandler):
+    """Neutron Network configuration verify handler
+    """
+
+    validator = NeutronNetworkConfigurationValidator
+    net_manager = NeutronManager
+    provider = "neutron"
 
 
 class NovaNetworkConfigurationHandler(ProviderHandler):
@@ -244,15 +259,3 @@ class NeutronNetworkConfigurationHandler(ProviderHandler):
         else:
             db().commit()
         raise web.accepted(data=data)
-
-
-class NeutronNetworkConfigurationVerifyHandler(
-        NovaNetworkConfigurationVerifyHandler):
-    validator = NeutronNetworkConfigurationValidator
-    provider = "neutron"
-
-    @content_json
-    def PUT(self, cluster_id):
-        cluster = self.get_object_or_404(Cluster, cluster_id)
-        self.check_net_provider(cluster)
-        return self.launch_verify(cluster)
