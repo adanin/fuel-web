@@ -21,6 +21,7 @@ default_messages = {
     "InvalidData": "Invalid data received",
     "AlreadyExists": "Object already exists",
     "DumpRunning": "Dump already running",
+    "NodeNotInCluster": "Node must be in cluster",
 
     # REST errors
     "CannotDelete": "Can't delete object",
